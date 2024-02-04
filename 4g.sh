@@ -161,7 +161,8 @@ install_x-ui() {
     echo -e "x-ui install      - Cai dat x-ui"
     echo -e "x-ui uninstall    - Go cai dat x-ui"
     echo -e "----------------------------------------------"
-	echo -e "LIEN HE KHI DELL BIET DUNG: BI VAN DAT"
+    echo -e "Truy cap: IP:[port_vua nhap ben tren]"
+    echo -e "LH KHI DELL BIET DUNG: BI VAN DAT"
 }
 
 echo -e "${do_green}Bat dau cai dat${do_plain}"
