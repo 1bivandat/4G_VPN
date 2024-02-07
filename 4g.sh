@@ -1,170 +1,207 @@
 #!/bin/bash
 
-do_red='\033[0;31m'
-do_green='\033[0;32m'
-do_yellow='\033[0;33m'
-do_plain='\033[0m'
+red='\033[0;31m'
+green='\033[0;32m'
+yellow='\033[0;33m'
+plain='\033[0m'
 
 cur_dir=$(pwd)
 
-# kiểm tra root
-[[ $EUID -ne 0 ]] && echo -e "${do_red}Error:${do_plain} Ban can chay script nay voi quyen root!\n" && exit 1
+# check root
+[[ $EUID -ne 0 ]] && echo -e "${red}Fatal error: ${plain} Please run this script with root privilege \n " && exit 1
 
-# kiểm tra hệ điều hành
-if [[ -f /etc/redhat-release ]]; then
-    release="centos"
-elif cat /etc/issue | grep -Eqi "debian"; then
-    release="debian"
-elif cat /etc/issue | grep -Eqi "ubuntu"; then
-    release="ubuntu"
-elif cat /etc/issue | grep -Eqi "centos|red hat|redhat"; then
-    release="centos"
-elif cat /proc/version | grep -Eqi "debian"; then
-    release="debian"
-elif cat /proc/version | grep -Eqi "ubuntu"; then
-    release="ubuntu"
-elif cat /proc/version | grep -Eqi "centos|red hat|redhat"; then
-    release="centos"
+# Check OS and set release variable
+if [[ -f /etc/os-release ]]; then
+    source /etc/os-release
+    release=$ID
+elif [[ -f /usr/lib/os-release ]]; then
+    source /usr/lib/os-release
+    release=$ID
 else
-    echo -e "${do_red}Khong phat hien duoc phien ban he dieu hanh, vui long lien he tac gia script!${do_plain}\n" && exit 1
+    echo "Failed to check the system OS, please contact the author!" >&2
+    exit 1
 fi
+echo "The OS release is: $release"
 
-arch=$(arch)
+arch3xui() {
+    case "$(uname -m)" in
+    x86_64 | x64 | amd64) echo 'amd64' ;;
+    i*86 | x86) echo '386' ;;
+    armv8* | armv8 | arm64 | aarch64) echo 'arm64' ;;
+    armv7* | armv7 | arm) echo 'armv7' ;;
+    armv6* | armv6) echo 'armv6' ;;
+    armv5* | armv5) echo 'armv5' ;;
+    *) echo -e "${green}Unsupported CPU architecture! ${plain}" && rm -f install.sh && exit 1 ;;
+    esac
+}
 
-if [[ $arch == "x86_64" || $arch == "x64" || $arch == "amd64" ]]; then
-    arch="amd64"
-elif [[ $arch == "aarch64" || $arch == "arm64" ]]; then
-    arch="arm64"
-elif [[ $arch == "s390x" ]]; then
-    arch="s390x"
-else
-    arch="amd64"
-    echo -e "${do_red}Kiem tra kien truc that bai, su dung kien truc mac dinh: ${arch}${do_plain}"
-fi
-
-echo "Kien truc: ${arch}"
-
-if [ $(getconf WORD_BIT) != '32' ] && [ $(getconf LONG_BIT) != '64' ]; then
-    echo "Phan mem nay khong ho tro he thong 32 bit (x86), vui long su dung he thong 64 bit (x86_64), neu kiem tra sai, vui long lien he tac gia"
-    exit -1
-fi
+echo "arch: $(arch3xui)"
 
 os_version=""
+os_version=$(grep -i version_id /etc/os-release | cut -d \" -f2 | cut -d . -f1)
 
-# phiên bản hệ điều hành
-if [[ -f /etc/os-release ]]; then
-    os_version=$(awk -F'[= ."]' '/VERSION_ID/{print $3}' /etc/os-release)
-fi
-if [[ -z "$os_version" && -f /etc/lsb-release ]]; then
-    os_version=$(awk -F'[= ."]+' '/DISTRIB_RELEASE/{print $2}' /etc/lsb-release)
-fi
-
-if [[ x"${release}" == x"centos" ]]; then
-    if [[ ${os_version} -le 6 ]]; then
-        echo -e "${do_red}Vui long su dung CentOS 7 hoac phien ban cao hon cua he dieu hanh!${do_plain}\n" && exit 1
-    fi
-elif [[ x"${release}" == x"ubuntu" ]]; then
-    if [[ ${os_version} -lt 16 ]]; then
-        echo -e "${do_red}Vui long su dung Ubuntu 16 hoac phien ban cao hon cua he dieu hanh!${do_plain}\n" && exit 1
-    fi
-elif [[ x"${release}" == x"debian" ]]; then
+if [[ "${release}" == "centos" ]]; then
     if [[ ${os_version} -lt 8 ]]; then
-        echo -e "${do_red}Vui long su dung Debain 8 hoac phien ban cao hon cua he dieu hanh!${do_plain}\n" && exit 1
+        echo -e "${red} Please use CentOS 8 or higher ${plain}\n" && exit 1
     fi
+elif [[ "${release}" == "ubuntu" ]]; then
+    if [[ ${os_version} -lt 20 ]]; then
+        echo -e "${red} Please use Ubuntu 20 or higher version!${plain}\n" && exit 1
+    fi
+
+elif [[ "${release}" == "fedora" ]]; then
+    if [[ ${os_version} -lt 36 ]]; then
+        echo -e "${red} Please use Fedora 36 or higher version!${plain}\n" && exit 1
+    fi
+
+elif [[ "${release}" == "debian" ]]; then
+    if [[ ${os_version} -lt 11 ]]; then
+        echo -e "${red} Please use Debian 11 or higher ${plain}\n" && exit 1
+    fi
+
+elif [[ "${release}" == "almalinux" ]]; then
+    if [[ ${os_version} -lt 9 ]]; then
+        echo -e "${red} Please use AlmaLinux 9 or higher ${plain}\n" && exit 1
+    fi
+
+elif [[ "${release}" == "rocky" ]]; then
+    if [[ ${os_version} -lt 9 ]]; then
+        echo -e "${red} Please use RockyLinux 9 or higher ${plain}\n" && exit 1
+    fi
+elif [[ "${release}" == "arch" ]]; then
+    echo "Your OS is ArchLinux"
+elif [[ "${release}" == "manjaro" ]]; then
+    echo "Your OS is Manjaro"
+elif [[ "${release}" == "armbian" ]]; then
+    echo "Your OS is Armbian"
+
+else
+    echo -e "${red}Failed to check the OS version, please contact the author!${plain}" && exit 1
 fi
 
 install_base() {
-    if [[ x"${release}" == x"centos" ]]; then
-        yum install wget curl tar -y
-    else
-        apt install wget curl tar -y
-    fi
+    case "${release}" in
+    centos | almalinux | rocky)
+        yum -y update && yum install -y -q wget curl tar
+        ;;
+    fedora)
+        dnf -y update && dnf install -y -q wget curl tar
+        ;;
+    arch | manjaro)
+        pacman -Syu && pacman -Syu --noconfirm wget curl tar
+        ;;
+    *)
+        apt-get update && apt install -y -q wget curl tar
+        ;;
+    esac
 }
 
+# This function will be called when user installed x-ui out of security
 config_after_install() {
-    echo -e "${do_yellow}Vi ly do an ninh, sau khi cai dat / cap nhat, ban can phai bat buoc thay doi Port va Password tai khoan${do_plain}"
-    read -p "Xac nhan tiep tuc ?[y/n]": config_confirm
-    if [[ x"${config_confirm}" == x"y" || x"${config_confirm}" == x"Y" ]]; then
-        read -p "Vui lòng nhập User:" config_account
-        echo -e "${do_yellow}-----------> User:${config_account}${do_plain}"
-        read -p "Vui lòng nhập Password:" config_password
-        echo -e "${do_yellow}-----------> Password:${config_password}${do_plain}"
-        read -p "Vui lòng nhập Port:" config_port
-        echo -e "${do_yellow}-----------> Port:${config_port}${do_plain}"
-        echo -e "${do_yellow}Xac nhan thiet lap, dang thiet lap${do_plain}"
+    echo -e "${yellow}Install/update finished! For security it's recommended to modify panel settings ${plain}"
+    read -p "Do you want to continue with the modification [y/n]?": config_confirm
+    if [[ "${config_confirm}" == "y" || "${config_confirm}" == "Y" ]]; then
+        read -p "Please set up your username:" config_account
+        echo -e "${yellow}Your username will be:${config_account}${plain}"
+        read -p "Please set up your password:" config_password
+        echo -e "${yellow}Your password will be:${config_password}${plain}"
+        read -p "Please set up the panel port:" config_port
+        echo -e "${yellow}Your panel port is:${config_port}${plain}"
+        echo -e "${yellow}Initializing, please wait...${plain}"
         /usr/local/x-ui/x-ui setting -username ${config_account} -password ${config_password}
-        echo -e "${do_yellow}Thiet lap mat khau tai khoan hoan tat${do_plain}"
+        echo -e "${yellow}Account name and password set successfully!${plain}"
         /usr/local/x-ui/x-ui setting -port ${config_port}
-        echo -e "${do_yellow}Thiet lap cong bang dieu khien hoan tat${do_plain}"
+        echo -e "${yellow}Panel port set successfully!${plain}"
     else
-        echo -e "${do_red}Da huy, tat ca cac muc cai dat deu la mac dinh, vui long thay doi ngay lap tuc${do_plain}"
+        echo -e "${red}cancel...${plain}"
+        if [[ ! -f "/etc/x-ui/x-ui.db" ]]; then
+            local usernameTemp=$(head -c 6 /dev/urandom | base64)
+            local passwordTemp=$(head -c 6 /dev/urandom | base64)
+            /usr/local/x-ui/x-ui setting -username ${usernameTemp} -password ${passwordTemp}
+            echo -e "this is a fresh installation,will generate random login info for security concerns:"
+            echo -e "###############################################"
+            echo -e "${green}username:${usernameTemp}${plain}"
+            echo -e "${green}password:${passwordTemp}${plain}"
+            echo -e "###############################################"
+            echo -e "${red}if you forgot your login info,you can type x-ui and then type 8 to check after installation${plain}"
+        else
+            echo -e "${red} this is your upgrade,will keep old settings,if you forgot your login info,you can type x-ui and then type 8 to check${plain}"
+        fi
     fi
+    /usr/local/x-ui/x-ui migrate
 }
 
 install_x-ui() {
-    systemctl stop x-ui
     cd /usr/local/
 
     if [ $# == 0 ]; then
-        last_version=$(curl -Ls "https://api.github.com/repos/vaxilu/x-ui/releases/latest" | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
+        last_version=$(curl -Ls "https://api.github.com/repos/MHSanaei/3x-ui/releases/latest" | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
         if [[ ! -n "$last_version" ]]; then
-            echo -e "${do_red}Kiem tra phien ban x-ui that bai, co the vuot qua gioi han API Github, vui long thu lai sau hoac xac dinh phien ban x-ui de cai dat${do_plain}"
+            echo -e "${red}Failed to fetch x-ui version, it maybe due to Github API restrictions, please try it later${plain}"
             exit 1
         fi
-        echo -e "Phat hien phien ban x-ui moi nhat: ${last_version}, bat dau cai dat"
-        wget -N --no-check-certificate -O /usr/local/x-ui-linux-${arch}.tar.gz https://github.com/vaxilu/x-ui/releases/download/${last_version}/x-ui-linux-${arch}.tar.gz
+        echo -e "Got x-ui latest version: ${last_version}, beginning the installation..."
+        wget -N --no-check-certificate -O /usr/local/x-ui-linux-$(arch3xui).tar.gz https://github.com/MHSanaei/3x-ui/releases/download/${last_version}/x-ui-linux-$(arch3xui).tar.gz
         if [[ $? -ne 0 ]]; then
-            echo -e "${do_red}Tai xuong x-ui that bai, hay chac chan rang may chu cua ban co the tai xuong cac tep tu Github${do_plain}"
+            echo -e "${red}Downloading x-ui failed, please be sure that your server can access Github ${plain}"
             exit 1
         fi
     else
         last_version=$1
-        url="https://github.com/vaxilu/x-ui/releases/download/${last_version}/x-ui-linux-${arch}.tar.gz"
-        echo -e "Bat dau cai dat x-ui v$1"
-        wget -N --no-check-certificate -O /usr/local/x-ui-linux-${arch}.tar.gz ${url}
+        url="https://github.com/MHSanaei/3x-ui/releases/download/${last_version}/x-ui-linux-$(arch3xui).tar.gz"
+        echo -e "Beginning to install x-ui $1"
+        wget -N --no-check-certificate -O /usr/local/x-ui-linux-$(arch3xui).tar.gz ${url}
         if [[ $? -ne 0 ]]; then
-            echo -e "${do_red}Tai xuong x-ui v$1 that bai, vui long chac chan rang phien ban nay ton tai${do_plain}"
+            echo -e "${red}Download x-ui $1 failed,please check the version exists ${plain}"
             exit 1
         fi
     fi
 
     if [[ -e /usr/local/x-ui/ ]]; then
+        systemctl stop x-ui
         rm /usr/local/x-ui/ -rf
     fi
 
-    tar zxvf x-ui-linux-${arch}.tar.gz
-    rm x-ui-linux-${arch}.tar.gz -f
+    tar zxvf x-ui-linux-$(arch3xui).tar.gz
+    rm x-ui-linux-$(arch3xui).tar.gz -f
     cd x-ui
-    chmod +x x-ui bin/xray-linux-${arch}
+    chmod +x x-ui
+
+    # Check the system's architecture and rename the file accordingly
+    if [[ $(arch3xui) == "armv5" || $(arch3xui) == "armv6" || $(arch3xui) == "armv7" ]]; then
+        mv bin/xray-linux-$(arch3xui) bin/xray-linux-arm
+        chmod +x bin/xray-linux-arm
+    fi
+
+    chmod +x x-ui bin/xray-linux-$(arch3xui)
     cp -f x-ui.service /etc/systemd/system/
-    wget --no-check-certificate -O /usr/bin/x-ui https://raw.githubusercontent.com/vaxilu/x-ui/main/x-ui.sh
+    wget --no-check-certificate -O /usr/bin/x-ui https://raw.githubusercontent.com/MHSanaei/3x-ui/main/x-ui.sh
     chmod +x /usr/local/x-ui/x-ui.sh
     chmod +x /usr/bin/x-ui
     config_after_install
+
     systemctl daemon-reload
     systemctl enable x-ui
     systemctl start x-ui
-    echo -e "${do_green}x-ui v${last_version}${do_plain} da duoc cai dat, bang dieu khien da duoc khoi dong,"
+    echo -e "${green}x-ui ${last_version}${plain} installation finished, it is running now..."
     echo -e ""
-    echo -e "|---------------------------------CACH SU DUNG x-ui: -----------------------------------|"
-    echo -e "|---------------------------------------------------------------------------------------|"
-    echo -e "|         x-ui              - Hien thi menu quan ly (co nhieu tinh nang)                |"
-    echo -e "|         x-ui start        - Khoi dong x-ui                                            |"
-    echo -e "|         x-ui stop         - Dung x-ui                                                 |"
-    echo -e "|         x-ui restart      - Khoi dong lai x-ui                                        |"
-    echo -e "|         x-ui status       - Kiem tra trang thai thái x-ui                             |"
-    echo -e "|         x-ui enable       - Thiet lap x-ui tu khoi dong cung he thong                 |"
-    echo -e "|         x-ui disable      - Huy bo tu khoi dong x-ui cung he thong                    |"
-    echo -e "|         x-ui log          - Xem log x-ui                                              |"
-    echo -e "|         x-ui v2-ui        - Di chuyen du lieu tai khoan v2-ui tren may nay sang x-ui  |"
-    echo -e "|         x-ui update       - Cap nhat x-ui                                             |"
-    echo -e "|         x-ui install      - Cai dat x-ui                                              |"
-    echo -e "|         x-ui uninstall    - Go cai dat x-ui                                           |"
-    echo -e "|---------------------------------------------------------------------------------------|"
-    echo -e "|------------------------------------BI VAN DAT-----------------------------------------|"
-    echo -e "Truy cap: IP:[port_vua nhap ben tren]"
+    echo -e "x-ui control menu usages: "
+    echo -e "----------------------------------------------"
+    echo -e "x-ui              - Enter     Admin menu"
+    echo -e "x-ui start        - Start     x-ui"
+    echo -e "x-ui stop         - Stop      x-ui"
+    echo -e "x-ui restart      - Restart   x-ui"
+    echo -e "x-ui status       - Show      x-ui status"
+    echo -e "x-ui enable       - Enable    x-ui on system startup"
+    echo -e "x-ui disable      - Disable   x-ui on system startup"
+    echo -e "x-ui log          - Check     x-ui logs"
+    echo -e "x-ui banlog       - Check Fail2ban ban logs"
+    echo -e "x-ui update       - Update    x-ui"
+    echo -e "x-ui install      - Install   x-ui"
+    echo -e "x-ui uninstall    - Uninstall x-ui"
+    echo -e "----------------------------------------------"
 }
 
-echo -e "${do_green}Bat dau cai dat${do_plain}"
+echo -e "${green}Running...${plain}"
 install_base
 install_x-ui $1
